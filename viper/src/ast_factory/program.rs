@@ -171,6 +171,24 @@ impl<'a> AstFactory<'a> {
         axioms: &[NamedDomainAxiom],
         type_vars: &[Type],
     ) -> Domain<'a> {
+        self.domain_with_interpretation(name, functions, axioms, type_vars, None)
+    }
+
+    pub fn domain_with_interpretation(
+        &self,
+        name: &str,
+        functions: &[DomainFunc],
+        axioms: &[NamedDomainAxiom],
+        type_vars: &[Type],
+        interpretations: Option<&[(String, String)]>,
+    ) -> Domain<'a> {
+        let ints = interpretations.map(|p| {
+            let pairs = p
+                .iter()
+                .map(|(a, b)| (self.jni.new_string(a), self.jni.new_string(b)))
+                .collect::<Vec<_>>();
+            self.jni.new_map(&pairs)
+        });
         build_ast_node!(
             self,
             Domain,
@@ -179,10 +197,33 @@ impl<'a> AstFactory<'a> {
             self.jni.new_seq(&map_to_jobjects!(functions)),
             self.jni.new_seq(&map_to_jobjects!(axioms)),
             self.jni.new_seq(&map_to_jobjects!(type_vars)),
-            self.jni.new_option(None)
+            self.jni.new_option(ints)
         )
     }
 
+    pub fn domain_func_with_interpretation(
+        &self,
+        name: &str,
+        formal_args: &[LocalVarDecl],
+        typ: Type,
+        unique: bool,
+        domain_name: &str,
+        interpretation: Option<String>,
+    ) -> DomainFunc<'a> {
+        let interpretation = interpretation.map(|s| self.jni.new_string(s));
+        let obj = self.jni.unwrap_result(ast::DomainFunc::with(self.env).new(
+            self.jni.new_string(name),
+            self.jni.new_seq(&map_to_jobjects!(formal_args)),
+            typ.to_jobject(),
+            unique,
+            self.jni.new_option(interpretation),
+            self.no_position().to_jobject(),
+            self.no_info(),
+            self.jni.new_string(domain_name),
+            self.no_trafos(),
+        ));
+        DomainFunc::new(obj)
+    }
     pub fn domain_func(
         &self,
         name: &str,
@@ -191,18 +232,7 @@ impl<'a> AstFactory<'a> {
         unique: bool,
         domain_name: &str,
     ) -> DomainFunc<'a> {
-        let obj = self.jni.unwrap_result(ast::DomainFunc::with(self.env).new(
-            self.jni.new_string(name),
-            self.jni.new_seq(&map_to_jobjects!(formal_args)),
-            typ.to_jobject(),
-            unique,
-            self.jni.new_option(None),
-            self.no_position().to_jobject(),
-            self.no_info(),
-            self.jni.new_string(domain_name),
-            self.no_trafos(),
-        ));
-        DomainFunc::new(obj)
+        self.domain_func_with_interpretation(name, formal_args, typ, unique, domain_name, None)
     }
 
     pub fn named_domain_axiom(
