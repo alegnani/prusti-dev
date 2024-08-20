@@ -7,7 +7,7 @@
 use crate::{
     ast_factory::*, ast_utils::*, verification_backend::VerificationBackend, verifier::Verifier,
 };
-use jni::AttachGuard;
+use jni::JNIEnv;
 use log::{debug, info};
 use std::{
     env,
@@ -17,11 +17,11 @@ use std::{
 use crate::smt_manager::SmtManager;
 
 pub struct VerificationContext<'a> {
-    env: AttachGuard<'a>,
+    env: JNIEnv<'a>,
 }
 
 impl<'a> VerificationContext<'a> {
-    pub fn new(env_guard: AttachGuard<'a>) -> Self {
+    pub fn new(env_guard: JNIEnv<'a>) -> Self {
         VerificationContext { env: env_guard }
     }
 
